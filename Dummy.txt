@@ -1,3 +1,0 @@
-Hi
-This is my first trial on the GitHub Platform 
-I am using github for pushing the python automation script for Appium automation
