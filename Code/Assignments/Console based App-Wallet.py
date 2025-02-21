@@ -1,5 +1,5 @@
 import json
-import datetime
+from datetime import datetime
 import os
 
 class User:
@@ -12,8 +12,7 @@ class User:
             'name': '',
             'email': '',
             'phone': ''
-            }
-
+        }
     def to_dict(self):
         return {
             "password": self.password,
@@ -21,12 +20,14 @@ class User:
             "transactions": self.transactions,
             "profile": self.profile
         }
+
     @staticmethod
     def from_dict(username, data):
         user = User(username, data["password"], data["balance"])
         user.transactions = data["transactions"]
         user.profile = data["profile"]
         return user
+
 class WalletApp:
     USER_DATA_FILE = "wallet_data.json"
 
@@ -47,36 +48,46 @@ class WalletApp:
 
     def register(self, username, password, initial_balance=0):
         if username in self.users:
-            print("User already exists!,try with new User")
+            print("User already exists! Try with a new username.")
             return
-        self.users[username] = User(username, password, initial_balance)
+        new_user = User(username, password, initial_balance)
+        # Record the initial balance in the transaction history
+        if initial_balance >= 0:
+            new_user.transactions.append({
+                "date_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "type": "Initial Deposit",
+                "amount": initial_balance,
+                "balance": initial_balance
+            })
+        self.users[username] = new_user
         self.save_users()
         print("User Registered Successfully!")
-
     def login(self, username, password):
         if username in self.users and self.users[username].password == password:
             self.current_user = self.users[username]
             print("Login Successful!")
+            return True
         else:
-            print("Invalid Credentials!")
+            print("Login failed, try again.")
+            return False
 
     def check_balance(self):
         if self.current_user:
-            print(f"Current Balance: ${self.current_user.balance}")
+            print(f"Current Balance: ₹{self.current_user.balance}")
         else:
-            print("No user logged in to the App!")
+            print("No user logged in!")
 
     def deposit_money(self, amount):
         if self.current_user and amount > 0:
             self.current_user.balance += amount
             self.current_user.transactions.append({
-                "date": str(datetime.date.today()),
+                "date_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "type": "Deposit",
                 "amount": amount,
                 "balance": self.current_user.balance
             })
             self.save_users()
-            print(f"Balance Updated! New Balance: ${self.current_user.balance}")
+            print(f"Balance Updated! New Balance: ₹{self.current_user.balance}")
         else:
             print("Invalid operation!")
 
@@ -84,47 +95,46 @@ class WalletApp:
         if self.current_user and 0 < amount <= self.current_user.balance:
             self.current_user.balance -= amount
             self.current_user.transactions.append({
-                "date": str(datetime.date.today()),
+                "date_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "type": "Withdraw",
                 "amount": -amount,
                 "balance": self.current_user.balance
             })
             self.save_users()
-            print(f"Transaction Successful! New Balance: ${self.current_user.balance}")
+            print(f"Transaction Successful! New Balance: ₹{self.current_user.balance}")
         else:
             print("Error: Insufficient Balance or Invalid Amount!")
 
     def apply_coupon(self, coupon_code):
-        coupons = {"SAVE10": 0.10,
-                   "BONUS20": 0.20,
-                   "DISCOUNT15": 0.15,
-                   "SUMMER25": 0.25,
-                   "NEWYEAR30": 0.30,
-                   "WELCOME50": 0.50,
-                   "EXTRA35": 0.35,
-                   }
+        coupons = {
+            "SAVE10": 0.10,
+            "BONUS20": 0.20,
+            "DISCOUNT15": 0.15,
+            "SUMMER25": 0.25,
+            "NEWYEAR30": 0.30,
+        }
         if self.current_user and coupon_code in coupons:
             bonus = self.current_user.balance * coupons[coupon_code]
             self.current_user.balance += bonus
             self.current_user.transactions.append({
-                "date": str(datetime.date.today()),
+                "date_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 "type": "Coupon",
                 "amount": bonus,
                 "balance": self.current_user.balance
             })
             self.save_users()
-            print(f"Coupon Applied! Bonus: ${bonus}. New Balance: ${self.current_user.balance}")
+            print(f"Coupon Applied! Bonus: ₹{bonus:.2f}. New Balance: ₹{self.current_user.balance:.2f}")
         else:
-            print("Invalid Coupon Code or No user logged in to the App!")
+            print("Invalid Coupon Code!")
 
     def view_transaction_history(self):
         if self.current_user:
-            print("Date | Type | Amount | Balance")
-            print("--------------------------------------")
+            print("Date & Time | Type | Amount | Balance")
+            print("------------------------------------------------------")
             for txn in self.current_user.transactions:
-                print(f"{txn['date']} | {txn['type']} | ${txn['amount']} | ${txn['balance']}")
+                print(f"{txn['date_time']} | {txn['type']} | ₹{txn['amount']} | ₹{txn['balance']}")
         else:
-            print("No user logged in to the App!")
+            print("No user logged in!")
 
     def update_profile(self, name, email, phone):
         if self.current_user:
@@ -134,33 +144,53 @@ class WalletApp:
             self.save_users()
             print("Profile Updated Successfully!")
         else:
-            print("No user logged in to the App!")
+            print("No user logged in!")
+
+    def view_profile(self):
+        if self.current_user:
+            profile = self.current_user.profile
+            print("Profile Information:")
+            print(f"Name: {profile['name']}")
+            print(f"Email: {profile['email']}")
+            print(f"Phone: {profile['phone']}")
+        else:
+            print("No user logged in!")
 
 if __name__ == "__main__":
     app = WalletApp()
+    print("Welcome to Wallet Application")
     while True:
-        print("\n1. Register\n2. Login\n3. Check Balance\n4. Deposit Money\n5. Withdraw Money\n6. Apply Coupon\n7. View Transactions\n8. Update Profile\n9. Logout\n10. Exit")
+        print("\n1. Register\n2. Login\n3. Exit")
         choice = input("Select an option: ")
         if choice == "1":
             app.register(input("Username: "), input("Password: "), float(input("Initial Balance: ")))
         elif choice == "2":
-            app.login(input("Username: "), input("Password: "))
+            if app.login(input("Username: "), input("Password: ")):
+                while True:
+                    print("\n4. Check Balance\n5. Deposit Money\n6. Withdraw Money\n7. Apply Coupon\n8. View Transaction History\n9. Update Profile\n10. View Profile\n11. Logout")
+                    sub_choice = input("Select an option: ")
+                    if sub_choice == "4":
+                        app.check_balance()
+                    elif sub_choice == "5":
+                        app.deposit_money(float(input("Enter amount: ")))
+                    elif sub_choice == "6":
+                        app.withdraw_money(float(input("Enter amount: ")))
+                    elif sub_choice == "7":
+                        app.apply_coupon(input("Enter coupon code: "))
+                    elif sub_choice == "8":
+                        app.view_transaction_history()
+                    elif sub_choice == "9":
+                        app.update_profile(input("Enter new Name: "), input("Enter new Email: "), input("Enter new Phone: "))
+                    elif sub_choice == "10":
+                        app.view_profile()
+                    elif sub_choice == "11":
+                        app.current_user = None
+                        print("User Logged out from the App")
+                        break
+                    else:
+                        print("Invalid choice selected!")
         elif choice == "3":
-            app.check_balance()
-        elif choice == "4":
-            app.deposit_money(float(input("Enter amount: ")))
-        elif choice == "5":
-            app.withdraw_money(float(input("Enter amount: ")))
-        elif choice == "6":
-            app.apply_coupon(input("Enter coupon code: "))
-        elif choice == "7":
-            app.view_transaction_history()
-        elif choice == "8":
-            app.update_profile(input("Enter new Name: "),input("Enter new Email: "),input("Enter new Phone: "))
-        elif choice == "9":
-            app.current_user = None
-            print("Logged out from the App")
-        elif choice == "10":
+            print("Thank you\n User Exited from the Application")
             break
         else:
-            print("Invalid choice selected!")
+            print("Invalid choice selected")
